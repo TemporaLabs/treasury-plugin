@@ -16,14 +16,26 @@ Carries `@temporalabs/treasury` 0.1.0.
   It quotes no rate, and a position's accrued yield is read from the vault's own on-chain events.
 
 ### Changed
-- Refreshed the bundle and registry to the product repository's `release/v0.1.0` tip after its
-  vault-identity rework (treasury#7, treasury#8): a vault is now named by its own on-chain ERC-20
-  `symbol` rather than an internal registry `slug`, `earn_vaults` reports `name` in place of
+- Refreshed the bundle and registry to `TemporaLabs/treasury@99b7b65f9e2fbe3f6bfec6fd3aa25e333f7afe0c`
+  after its vault-identity rework (treasury#7, treasury#8): a vault is now named by its own on-chain
+  ERC-20 `symbol` rather than an internal registry `slug`, `earn_vaults` reports `name` in place of
   `displayName`, and every response that commits money (`earn_prepare_deposit`, `earn_status`'s
   pre-flight, `earn_quote`'s deposit branch) now carries the vault's `warning` disclosure — not only
   the discovery call. This landed before this repository's own first release to `main`, so the
   plugin's initial public artifact carries the fixed shape rather than the internal-slug/no-warning
   shape it would otherwise have shipped with.
+- Refreshed the bundle again to `TemporaLabs/treasury@4d4b0de7962b0257680b2d9f570a7bfa20feae75`,
+  picking up treasury#14 and treasury#15: `earn_balance` now returns `scan.depositTxs` /
+  `scan.withdrawTxs` (the transactions behind the basis scan, so an operator gets an explorer link
+  without anyone rebuilding the log query), and every `earn_prepare_*` call carries `function` and
+  `args` — the decoded signature and named arguments a block explorer's Write Contract form asks
+  for. `skills/earn/SKILL.md` is updated to match: the signer hand-off no longer teaches
+  hand-decoding calldata, because the tool now supplies the decoded form directly.
+
+  Both entries above name a COMMIT rather than a branch deliberately. `release/v0.1.0` moves, so a
+  provenance claim pinned to it stops being checkable the moment it does — the first entry
+  originally named the branch and had already become unverifiable by the time the second was
+  written.
 
 ### Note
 
