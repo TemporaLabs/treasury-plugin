@@ -16,26 +16,32 @@ Carries `@temporalabs/treasury` v0.1.0.
   It quotes no rate, and a position's accrued yield is read from the vault's own on-chain events.
 
 ### Changed
-- Refreshed the bundle and registry to `TemporaLabs/treasury@99b7b65f9e2fbe3f6bfec6fd3aa25e333f7afe0c`
-  after its vault-identity rework (treasury#7, treasury#8): a vault is now named by its own on-chain
+- Refreshed the bundle and registry to the state merged by `TemporaLabs/treasury#8`,
+  its vault-identity rework (with `TemporaLabs/treasury#7`): a vault is now named by its own on-chain
   ERC-20 `symbol` rather than an internal registry `slug`, `earn_vaults` reports `name` in place of
   `displayName`, and every response that commits money (`earn_prepare_deposit`, `earn_status`'s
   pre-flight, `earn_quote`'s deposit branch) now carries the vault's `warning` disclosure — not only
   the discovery call. This landed before this repository's own first release to `main`, so the
   plugin's initial public artifact carries the fixed shape rather than the internal-slug/no-warning
   shape it would otherwise have shipped with.
-- Refreshed the bundle again to `TemporaLabs/treasury@4d4b0de7962b0257680b2d9f570a7bfa20feae75`,
-  picking up treasury#14 and treasury#15: `earn_balance` now returns `scan.depositTxs` /
+- Refreshed the bundle again to the state merged by `TemporaLabs/treasury#15`,
+  picking up `TemporaLabs/treasury#14` with it: `earn_balance` now returns `scan.depositTxs` /
   `scan.withdrawTxs` (the transactions behind the basis scan, so an operator gets an explorer link
   without anyone rebuilding the log query), and every `earn_prepare_*` call carries `function` and
   `args` — the decoded signature and named arguments a block explorer's Write Contract form asks
   for. `skills/earn/SKILL.md` is updated to match: the signer hand-off no longer teaches
   hand-decoding calldata, because the tool now supplies the decoded form directly.
 
-  Both entries above name a COMMIT rather than a branch deliberately. `release/v0.1.0` moves, so a
-  provenance claim pinned to it stops being checkable the moment it does — the first entry
-  originally named the branch and had already become unverifiable by the time the second was
-  written.
+  Both entries above name a PULL REQUEST deliberately, and they have named two other things first.
+  A branch was the original choice, and `release/v0.1.0` moves: the first entry had already become
+  unverifiable by the time the second was written. A commit hash replaced it and is the better
+  instinct, but it is stable only for as long as the history containing it is, which is a weaker
+  guarantee than it looks. A merged pull request number is fixed for the life of the repository —
+  it outlives any rewriting or re-tagging of history, and the commit it merged can always be read
+  back from the pull request itself. It is not indestructible: a repository rename moves it, and
+  deleting the repository takes it with everything else. But against the thing that actually breaks
+  provenance in practice — the history underneath a claim changing after the claim is written — the
+  pull request number is the part of this sentence that holds still.
 
 ### Note
 
