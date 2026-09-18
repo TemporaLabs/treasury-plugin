@@ -214,15 +214,39 @@ passphrase prompt per send); `--interactive` prompts for the key instead. Neithe
 command line, in an environment variable, or in shell history — which is where `--private-key $PK`
 put it, and where anything with a shell can read it.
 
-**Without Foundry, a block explorer's own "Write Contract" UI works too** — paste in the `to`
-address, find the function, and fill in its arguments by hand-decoding the call's `data`. The
-`description` names the same values in human terms (e.g. "25 USDC") as a check on what you decoded,
-but the form itself wants the token's raw integer units — 25 USDC is `25000000` for a 6-decimal
-token, not `25`. One gotcha specific to the approve call: **USDC on Base is deployed as
-a proxy** (`FiatTokenProxy`), so `approve` does not appear under the plain "Write Contract" tab — it
-only appears under **"Write as Proxy"**, which resolves against the implementation contract. The
-vault contract itself has no such wrinkle; `deposit`/`redeem` show up on its plain "Write Contract"
-tab as expected.
+**Without Foundry, a block explorer's own "Write Contract" UI works too, and every call carries
+what the form asks for.** Alongside `data`, each call has `function` — the full signature — and
+`args`, its arguments by name. Nothing needs decoding: go to `to`, pick the function `function`
+names, and type the values from `args`.
+
+```json
+{ "function": "approve(address spender, uint256 value)",
+  "args": { "spender": "0x040f…34Cf", "value": "25000000" } }
+```
+
+🔴 **`args` values are RAW CONTRACT UNITS, and the scale is not the same in every call.** The form
+takes them exactly as given — copy them, never round them, and never retype a value from
+`description`, which is the human sentence (`25 USDC`) and not what the form wants. In one deposit-
+and-exit cycle you will hand over all of these:
+
+| call | field | a real value | scale |
+|---|---|---|---|
+| `approve` / `deposit` | `value` / `assets` | `25000000` | USDC, 6 decimals |
+| `withdraw` | `assets` | `2500000` | USDC, 6 decimals |
+| `redeem` | `shares` | `1234567890123456789` | SHARES, 18 decimals |
+
+`redeem` is the one that bites: shares are 18-decimal against a 6-decimal asset, so a share amount
+never looks like a USDC amount and must not be sanity-checked as though it were.
+
+**This is also the first form in which the operator can check the destination themselves.** `args`
+names `receiver` and `owner` separately, and they are both addresses — a transposition that is
+invisible in hex is legible here. Have them read `receiver` back before signing; that is the
+destination check, done on something they can actually read.
+
+One gotcha specific to the approve call: **USDC on Base is deployed as a proxy** (`FiatTokenProxy`),
+so `approve` does not appear under the plain "Write Contract" tab — it only appears under **"Write
+as Proxy"**, which resolves against the implementation contract. The vault contract itself has no
+such wrinkle; `deposit`/`redeem` show up on its plain "Write Contract" tab as expected.
 
 **You never run these commands, and holding a shell is not a reason to.** A key reachable from
 your shell is a key in this conversation. The operator runs the send in a shell of theirs; you get
@@ -259,3 +283,10 @@ State what was measured and when: the vault's `symbol`, the pre-flight `status`,
 and — after a transaction — the resulting shares and value. Quote `findings` verbatim when
 something stopped you. An operator who can see the block and the exact revert can act; one
 who is told "it didn't work" cannot.
+
+**Show the transactions, not just the totals.** `earn_balance`'s `scan.depositTxs` and
+`scan.withdrawTxs` carry `{ txHash, blockNumber, amountUsdc }` for the events behind the basis;
+append a `txHash` to the vault's own `links.explorer` host (`earn_vaults` gives it) and the operator
+can open what actually landed instead of taking your word for it. ⚠️ **Each list holds at most the
+100 most recent, while `scan.deposits`/`scan.withdrawals` stay the TOTALS** — when the two disagree
+the list is partial, and saying so is the difference between a summary and a misleading one.
