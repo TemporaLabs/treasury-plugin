@@ -31,8 +31,27 @@ variable, capital is at risk, and a withdrawal depends on the liquidity availabl
 
 ## Install
 
-`claude plugin marketplace add TemporaLabs/treasury-plugin`, then
-`claude plugin install treasury@treasury`.
+Pin to a release branch. This is the recommended form: the ref is recorded with the marketplace
+entry, so `claude plugin marketplace update` refreshes *that* ref rather than moving the install
+onto another branch.
+
+```sh
+claude plugin marketplace add TemporaLabs/treasury-plugin@v0.1.0
+claude plugin install treasury@treasury
+```
+
+The `@<ref>` suffix takes any branch or tag; `TemporaLabs/treasury-plugin#v0.1.0` is equivalent. To
+track the default branch instead, drop the suffix:
+
+```sh
+claude plugin marketplace add TemporaLabs/treasury-plugin
+claude plugin install treasury@treasury
+```
+
+There is nothing to build and no dependency to install — the MCP server ships as a committed bundle
+and runs under `node`. Before first use, point it at a Base RPC endpoint with `TREASURY_RPC_BASE`;
+[`skills/earn/SKILL.md`](skills/earn/SKILL.md) covers that and the optional
+`TREASURY_LOGS_RPC_BASE`.
 
 ## Docs, security, contributing
 
