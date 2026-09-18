@@ -1,0 +1,96 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'v[0-9]*']
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: lint the skill
+        run: bash scripts/lint-skill.sh
+      # The product repository enforces that LICENCE and NOTICE travel INSIDE whatever ships. When the
+      # product collapsed to a single root package there was no longer a second copy there to compare
+      # against, so that assertion was removed rather than pointed at itself — a file compared to itself
+      # is a licence gate that passes forever while proving nothing. THIS tree is now the only place a
+      # second copy exists, so the property lives here.
+      #
+      # ⚠️ KNOWN GAP, deliberately not faked: byte-identity against the PRODUCT's published copies is not
+      # checked, because TemporaLabs/treasury does not carry NOTICE or THIRD_PARTY_NOTICES.md yet. Writing
+      # a fetch against paths that do not exist would fail or, worse, silently compare nothing. What is
+      # checked below is self-contained and real today; the cross-repo comparison lands when the product
+      # repository is populated.
+      - name: the licence, NOTICE and third-party notices really travel with this bundle
+        run: |
+          node - <<'JS'
+          const { createHash } = require("node:crypto");
+          const { readFileSync, statSync } = require("node:fs");
+          const sha = (b) => createHash("sha256").update(b).digest("hex");
+          const norm = (t) => t.replace(/\s+/g, " ").trim();
+          // Byte-identical to https://www.apache.org/licenses/LICENSE-2.0.txt, so a stranger checks it
+          // with one diff; the normalised hash additionally accepts the same licence laid out differently.
+          // The licence is pinned by its TEXT, not its bytes. The repository's LICENSE is
+          // GitHub's licence-picker template: 11,357 bytes, sha256 c71d239d…, which differs
+          // from the canonical file at apache.org (11,358 bytes, sha256 cfc7749b…) by a single
+          // leading newline. Same licence, laid out differently — measured against apache.org
+          // directly rather than against our own comment about it.
+          //
+          // A byte pin would buy one property: a stranger verifies with `diff` and no normaliser.
+          // It would also mean this gate rejecting the file the repository's owner put there, so
+          // the pin is the thing that gives way. CANONICAL below still proves it is Apache-2.0
+          // word for word, which is the property that actually matters for a licence.
+          const CANONICAL = "0ffddef9e48f8a09aed5caf2d44f7ba1c1be2d9b8e0a6f693b1635b2d5566645";
+          const fail = [];
+          const licence = readFileSync("LICENSE", "utf8");
+          // ⚠️ THIS IS A DIAGNOSTIC, NOT A GUARD, AND IT CANNOT FIRE WHILE CANONICAL IS BELOW IT.
+          // CANONICAL pins one exact normalised string, and that string contains "Apache License",
+          // so anything passing CANONICAL contains it too. Its only job is a readable error: an MIT
+          // file fails here with "does not name the Apache License" rather than with the less
+          // obvious "not the canonical text". If CANONICAL is ever dropped or weakened, THIS LINE
+          // WILL LOOK LIKE A SURVIVING GUARD AND WILL NOT BE ONE — a substring check passes on any
+          // document that merely quotes the licence's name.
+          if (!licence.includes("Apache License")) fail.push("LICENSE does not name the Apache License");
+          if (sha(norm(licence)) !== CANONICAL) fail.push("LICENSE is not the canonical Apache-2.0 text");
+          if (/TRADEMARKS\.md/.test(licence)) fail.push("LICENSE references TRADEMARKS.md, which no longer ships");
+          const notice = readFileSync("NOTICE", "utf8");
+          if (!norm(notice).includes("section 6")) fail.push("NOTICE does not withhold the names by citing section 6");
+          if (!/^Copyright 2026 Tempora Labs/m.test(notice)) fail.push("NOTICE carries no copyright line");
+          // Not vacuous: the notices file must actually carry the bundled dependencies' licences, and the
+          // bundle must actually be the bundle, so an emptied or placeholder file fails instead of passing.
+          const notices = readFileSync("THIRD_PARTY_NOTICES.md", "utf8");
+          if (statSync("THIRD_PARTY_NOTICES.md").size < 5000) fail.push("THIRD_PARTY_NOTICES.md is too small to be the real notices");
+          if (!/MIT|Apache/.test(notices)) fail.push("THIRD_PARTY_NOTICES.md names no dependency licence");
+          if (statSync("dist/mcp-server.mjs").size < 500000) fail.push("dist/mcp-server.mjs is not the bundled server");
+          if (fail.length) { for (const f of fail) console.log("::error::" + f); process.exit(1); }
+          console.log("licence, NOTICE and third-party notices all travel with the bundle");
+          JS
+      - name: SKILL.md's tool table matches the bundled server's real tools/list
+        run: |
+          python3 - <<'PY'
+          import json, re, subprocess, pathlib, sys
+          p = subprocess.Popen(["node", "dist/mcp-server.mjs"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+          def send(o): p.stdin.write(json.dumps(o) + "\n"); p.stdin.flush()
+          send({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "ci", "version": "0"}}}); p.stdout.readline()
+          send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+          send({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+          live = {t["name"] for t in json.loads(p.stdout.readline())["result"]["tools"]}
+          p.stdin.close(); p.wait(5)
+          md = pathlib.Path("skills/earn/SKILL.md").read_text()
+          # Anchored on the tool table's first column only — see treasury's ci.yml for why (a free
+          # prose scan produces both false positives and false negatives on this text).
+          documented = set(re.findall(r"^\|\s*`(earn_[a-z_]+)`", md, re.M))
+          missing = live - documented
+          phantom = documented - live
+          print("live:", sorted(live)); print("documented:", sorted(documented))
+          if missing: print("::error::SKILL.md never mentions:", sorted(missing))
+          if phantom: print("::error::SKILL.md names tools the server does not have:", sorted(phantom))
+          sys.exit(1 if (missing or phantom) else 0)
+          PY
