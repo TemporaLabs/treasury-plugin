@@ -245,7 +245,7 @@ you do it, and here is why the key stays with you."
 
 ## Reporting
 
-State what was measured and when: the vault slug, the pre-flight `status`, `measuredAtBlock`,
+State what was measured and when: the vault's `symbol`, the pre-flight `status`, `measuredAtBlock`,
 and — after a transaction — the resulting shares and value. Quote `findings` verbatim when
 something stopped you. An operator who can see the block and the exact revert can act; one
 who is told "it didn't work" cannot.
