@@ -27,7 +27,8 @@ jobs:
       # not checked here. TemporaLabs/treasury carries NOTICE and THIRD_PARTY_NOTICES.md on its release
       # branch, so the files exist — what the comparison still lacks is a ref it can name, and a fetch
       # against one that does not hold them fails or, worse, silently compares nothing. A published tag is
-      # that ref; which name it takes is TemporaLabs/treasury#4. What is checked below is self-contained
+      # that ref, and the naming is now settled: the product's releases are tagged `vX.Y.Z`, so the
+      # comparison can name one as soon as it is published. What is checked below is self-contained
       # and real regardless, and does not become weaker once the cross-repo comparison lands beside it.
       - name: the licence, NOTICE and third-party notices really travel with this bundle
         run: |
