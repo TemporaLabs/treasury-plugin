@@ -233,10 +233,14 @@ and-exit cycle you will hand over all of these:
 |---|---|---|---|
 | `approve` / `deposit` | `value` / `assets` | `25000000` | USDC, 6 decimals |
 | `withdraw` | `assets` | `2500000` | USDC, 6 decimals |
-| `redeem` | `shares` | `1234567890123456789` | SHARES, 18 decimals |
+| `redeem` | `shares` | `1234567890123456789` | SHARES — see below |
 
-`redeem` is the one that bites: shares are 18-decimal against a 6-decimal asset, so a share amount
-never looks like a USDC amount and must not be sanity-checked as though it were.
+`redeem` is the one that bites, and 🔴 **the share scale is PER-VAULT, not a constant.** The example
+above is the default vault at 18 decimals; a share amount there looks nothing like a USDC amount.
+Another vault in the same registry uses 8, which is close enough to 6 that a wrong-scale value looks
+plausible — so "does this look like a USDC amount?" is not the check. `earn_vaults` reports each
+vault's own share decimals; read it for the vault you are actually on, and never carry a scale over
+from one vault to another.
 
 **This is also the first form in which the operator can check the destination themselves.** `args`
 names `receiver` and `owner` separately, and they are both addresses — a transposition that is
@@ -285,8 +289,10 @@ something stopped you. An operator who can see the block and the exact revert ca
 who is told "it didn't work" cannot.
 
 **Show the transactions, not just the totals.** `earn_balance`'s `scan.depositTxs` and
-`scan.withdrawTxs` carry `{ txHash, blockNumber, amountUsdc }` for the events behind the basis;
-append a `txHash` to the vault's own `links.explorer` host (`earn_vaults` gives it) and the operator
-can open what actually landed instead of taking your word for it. ⚠️ **Each list holds at most the
+`scan.withdrawTxs` carry `{ txHash, blockNumber, amountUsdc }` for the events behind the basis, and
+a transaction link is `https://basescan.org/tx/<txHash>`. ⚠️ That is a DIFFERENT path from the
+vault's `links.explorer`, which is `https://basescan.org/address/<vault>` — swap the `/address/…`
+segment for `/tx/<txHash>`, never append to it, or the result is a URL that resolves to nothing.
+With the link the operator can open what actually landed instead of taking your word for it. ⚠️ **Each list holds at most the
 100 most recent, while `scan.deposits`/`scan.withdrawals` stay the TOTALS** — when the two disagree
 the list is partial, and saying so is the difference between a summary and a misleading one.
