@@ -23,11 +23,12 @@ jobs:
       # is a licence gate that passes forever while proving nothing. THIS tree is now the only place a
       # second copy exists, so the property lives here.
       #
-      # ⚠️ KNOWN GAP, deliberately not faked: byte-identity against the PRODUCT's published copies is not
-      # checked, because TemporaLabs/treasury does not carry NOTICE or THIRD_PARTY_NOTICES.md yet. Writing
-      # a fetch against paths that do not exist would fail or, worse, silently compare nothing. What is
-      # checked below is self-contained and real today; the cross-repo comparison lands when the product
-      # repository is populated.
+      # ⚠️ KNOWN GAP, deliberately not faked: byte-identity against the PRODUCT repository's own copies is
+      # not checked here. TemporaLabs/treasury carries NOTICE and THIRD_PARTY_NOTICES.md on its release
+      # branch, so the files exist — what the comparison still lacks is a ref it can name, and a fetch
+      # against one that does not hold them fails or, worse, silently compares nothing. A published tag is
+      # that ref; which name it takes is TemporaLabs/treasury#4. What is checked below is self-contained
+      # and real regardless, and does not become weaker once the cross-repo comparison lands beside it.
       - name: the licence, NOTICE and third-party notices really travel with this bundle
         run: |
           node - <<'JS'
