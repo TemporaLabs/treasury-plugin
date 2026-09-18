@@ -31,17 +31,23 @@ variable, capital is at risk, and a withdrawal depends on the liquidity availabl
 
 ## Install
 
-Pin to a release branch. This is the recommended form: the ref is recorded with the marketplace
-entry, so `claude plugin marketplace update` refreshes *that* ref rather than moving the install
-onto another branch.
+Pin to a release tag. A tag is immutable, so the install cannot drift:
 
 ```sh
 claude plugin marketplace add TemporaLabs/treasury-plugin@v0.1.0
 claude plugin install treasury@treasury
 ```
 
-The `@<ref>` suffix takes any branch or tag; `TemporaLabs/treasury-plugin#v0.1.0` is equivalent. To
-track the default branch instead, drop the suffix:
+Before a release is tagged, pin its release branch instead:
+
+```sh
+claude plugin marketplace add TemporaLabs/treasury-plugin@release/v0.1.0
+claude plugin install treasury@treasury
+```
+
+The `@<ref>` suffix takes any tag or branch, and `#<ref>` is equivalent. The ref is recorded with the
+marketplace entry, so `claude plugin marketplace update` refreshes *that* ref rather than moving the
+install onto another branch. To track the default branch instead, drop the suffix:
 
 ```sh
 claude plugin marketplace add TemporaLabs/treasury-plugin
