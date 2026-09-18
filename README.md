@@ -55,7 +55,16 @@ claude plugin install treasury@treasury
 ```
 
 There is nothing to build and no dependency to install — the MCP server ships as a committed bundle
-and runs under `node`. Before first use, point it at a Base RPC endpoint with `TREASURY_RPC_BASE`;
+and runs under `node`. **Node.js 22 or later must be on `PATH`** — without it the server process
+fails to spawn, and Claude Code reports that as a bare `CONNECTION_CLOSED` on any `earn_*` call,
+with no mention of Node.
+
+**Restart your Claude Code session once after installing** (or after changing the marketplace ref).
+MCP servers connect only at session start — `/reload-plugins` explicitly excludes them — so the
+`earn_*` tools stay absent until the next session, which otherwise looks identical to an install
+failure.
+
+Before first use, point it at a Base RPC endpoint with `TREASURY_RPC_BASE`;
 [`skills/earn/SKILL.md`](skills/earn/SKILL.md) covers that and the optional
 `TREASURY_LOGS_RPC_BASE`.
 

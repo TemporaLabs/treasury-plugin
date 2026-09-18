@@ -214,6 +214,14 @@ passphrase prompt per send); `--interactive` prompts for the key instead. Neithe
 command line, in an environment variable, or in shell history — which is where `--private-key $PK`
 put it, and where anything with a shell can read it.
 
+**Without Foundry, a block explorer's own "Write Contract" UI works too** — paste in the `to`
+address, find the function, and fill in its arguments by hand-decoding the call's `data` (or reading
+them off the `description`). One gotcha specific to the approve call: **USDC on Base is deployed as
+a proxy** (`FiatTokenProxy`), so `approve` does not appear under the plain "Write Contract" tab — it
+only appears under **"Write as Proxy"**, which resolves against the implementation contract. The
+vault contract itself has no such wrinkle; `deposit`/`redeem` show up on its plain "Write Contract"
+tab as expected.
+
 **You never run these commands, and holding a shell is not a reason to.** A key reachable from
 your shell is a key in this conversation. The operator runs the send in a shell of theirs; you get
 back the transaction hash.
