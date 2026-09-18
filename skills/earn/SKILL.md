@@ -215,8 +215,10 @@ command line, in an environment variable, or in shell history — which is where
 put it, and where anything with a shell can read it.
 
 **Without Foundry, a block explorer's own "Write Contract" UI works too** — paste in the `to`
-address, find the function, and fill in its arguments by hand-decoding the call's `data` (or reading
-them off the `description`). One gotcha specific to the approve call: **USDC on Base is deployed as
+address, find the function, and fill in its arguments by hand-decoding the call's `data`. The
+`description` names the same values in human terms (e.g. "25 USDC") as a check on what you decoded,
+but the form itself wants the token's raw integer units — 25 USDC is `25000000` for a 6-decimal
+token, not `25`. One gotcha specific to the approve call: **USDC on Base is deployed as
 a proxy** (`FiatTokenProxy`), so `approve` does not appear under the plain "Write Contract" tab — it
 only appears under **"Write as Proxy"**, which resolves against the implementation contract. The
 vault contract itself has no such wrinkle; `deposit`/`redeem` show up on its plain "Write Contract"
