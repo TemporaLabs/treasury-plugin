@@ -16,9 +16,11 @@ variable, capital is at risk, and a withdrawal depends on the liquidity availabl
   the plugin manifests for each host.
 - `skills/earn/SKILL.md` — the skill an agent reads.
 - `.mcp.json`, `dist/mcp-server.mjs`, `registry/vaults.json` — the MCP server this tree bundles,
-  and the vault registry it reads. Once `@temporalabs/treasury` is published to npm, `.mcp.json`
-  moves to an exact-version `npx` pin and this repository stops carrying the bundle directly; that
-  is the intended order, not a change of plan.
+  and the vault registry it reads. `@temporalabs/treasury` is published to npm, and this repository
+  still carries the bundle on purpose: the carried file installs nothing, while resolving the package
+  by name would pull the library's runtime dependencies — on the order of a hundred packages the MCP
+  server never loads. The release tag pins the version. Byte-identity between this bundle and the
+  product's release is the invariant; the cross-repository check for it is tracked in #7.
 
 ## What it never contains
 
