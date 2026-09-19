@@ -97,3 +97,10 @@ jobs:
           if phantom: print("::error::SKILL.md names tools the server does not have:", sorted(phantom))
           sys.exit(1 if (missing or phantom) else 0)
           PY
+      # package.json's version is a RUNTIME value here, not metadata: the committed bundle reads
+      # `../package.json` at load and reports it as `serverInfo.version`. The manifests are what the
+      # marketplace and the hosts advertise. They agreed at v0.1.0 and drifted at the v0.1.1 cut,
+      # when package.json alone was stamped — nothing noticed, because nothing was looking. Appended
+      # last deliberately: it needs nothing from the steps above and depends on no ordering.
+      - name: every declaration of this repository's own version agrees
+        run: bash scripts/check-versions.sh
