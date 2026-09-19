@@ -47,6 +47,13 @@ REF=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["ref"])' "$
 # default-branch tip, fetched and compared clean. The earlier test used a NONEXISTENT SHA, which does
 # fail — a different target, and the reason the false claim survived. So the commit path below checks
 # REACHABILITY separately from retrieval.
+#
+# ⚠️ AND A TAG IS NOT IMMUTABLE EITHER, only conventionally stable. `git tag -f` plus a force push
+# moves one, and this comparison moves with it silently — the pin string is unchanged, so nothing
+# here can tell that what it names is a different commit than yesterday. The SHA form is the
+# stronger pin for that reason and the tag form is the more readable one, which is the whole of the
+# trade between them. What makes the tag form safe enough to prefer is not the tag: it is that the
+# product publishes releases and a moved release tag is an incident there, not a routine.
 if [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   KIND=tag
 elif [[ "$REF" =~ ^[0-9a-f]{40}$ ]]; then
@@ -81,8 +88,8 @@ else
   # handed. Blobs arrive on demand at checkout below. Measured at 0.5s and 284K on this product.
   if ! GIT_TERMINAL_PROMPT=0 git -C "$P" fetch -q --filter=blob:none origin \
       'refs/heads/main:refs/published/main' \
-      'refs/heads/release/v*:refs/published/release/*' \
-      'refs/tags/v*:refs/published/tags/*'; then
+      'refs/heads/release/v*:refs/published/release/v*' \
+      'refs/tags/v*:refs/published/tags/v*'; then
     echo "::error::could not read $REPO's published refs — failing rather than guessing at reachability."
     exit 1
   fi
@@ -99,8 +106,9 @@ else
     fi
   done
   if [ -z "$REACHED" ]; then
-    echo "::error::$REPO holds commit $REF but no published ref reaches it — it is orphaned, most likely by a history rewrite."
-    echo "::error::It fetches and it would compare clean, which is exactly why this is checked separately: a commit nothing can reach is not provenance, it is an object the server has not collected yet."
+    echo "::error::$REPO holds commit $REF but no published ref reaches it: not main, not a release/v* branch, not a v* tag."
+    echo "::error::Three different things produce this, and the refusal is right for all three: the commit was orphaned by a history rewrite; or it is the live head of a branch that has not merged yet, including an open pull request's; or its branch was deleted without merging. Pin something the product has actually published."
+    echo "::error::It fetches and it would compare clean either way, which is exactly why reachability is asked separately from retrieval: a commit nothing can reach is not provenance, it is an object the server has not collected yet."
     exit 1
   fi
   echo "  reachable from:$REACHED"
@@ -136,8 +144,13 @@ echo "all ${#FILES[@]} carried files are byte-identical to $REPO at $REF"
 # half of it: if the product has tagged something newer, say so. It does NOT fail, because the
 # product's release cadence is not this repository's, and a red build on every unrelated pull
 # request the moment the product ships would train everyone to ignore the colour.
+#
+# ⚠️ Only exact vX.Y.Z tags are candidates. `sort -V` ranks a pre-release ABOVE the release it
+# precedes — `v0.2.0-alpha` sorts over `v0.1.1` — so a single alpha tag would otherwise make this
+# announce a version nothing is meant to carry yet. The grep is what keeps "newest release" meaning
+# a release. It also puts `v0.10.0` above `v0.2.0`, which a lexical sort would not.
 LATEST=$(GIT_TERMINAL_PROMPT=0 git ls-remote --tags --refs "$URL" 'refs/tags/v[0-9]*' 2>/dev/null \
-  | sed 's#.*refs/tags/##' | sort -V | tail -1 || true)
+  | sed 's#.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
 if [ -n "$LATEST" ] && [ "$KIND" = tag ] && [ "$LATEST" != "$REF" ]; then
   echo "::warning::$REPO has released $LATEST; this tree is pinned to $REF. Not a failure — but if $LATEST changed the bundle, refreshing is a release-time decision, not an oversight."
 fi
