@@ -17,20 +17,25 @@ jobs:
         with: { node-version: "22" }
       - name: lint the skill
         run: bash scripts/lint-skill.sh
+      # The cross-repository comparison this file used to record as a KNOWN GAP. It was waiting for a
+      # product ref it could name that would not move underneath it; the product's releases are tagged
+      # `vX.Y.Z` and `v0.1.0` is published, so it can. `bundle-source.json` names the ref and the script
+      # refuses to accept a branch as one. Closes #7.
+      - name: what this tree carries from the product is byte-identical to the product's own
+        run: bash scripts/check-bundle-source.sh
       # The product repository enforces that LICENCE and NOTICE travel INSIDE whatever ships. When the
       # product collapsed to a single root package there was no longer a second copy there to compare
       # against, so that assertion was removed rather than pointed at itself — a file compared to itself
       # is a licence gate that passes forever while proving nothing. THIS tree is now the only place a
       # second copy exists, so the property lives here.
       #
-      # ⚠️ KNOWN GAP, deliberately not faked: byte-identity against the PRODUCT repository's own copies is
-      # not checked here. TemporaLabs/treasury carries NOTICE and THIRD_PARTY_NOTICES.md on its release
-      # branch, so the files exist — what the comparison still lacks is a ref it can name, and a fetch
-      # against one that does not hold them fails or, worse, silently compares nothing. A published tag is
-      # that ref, and one now exists: the product's releases are tagged `vX.Y.Z` and `v0.1.0` is
-      # published, so the comparison can name it. Building that comparison is tracked in #7. What is
-      # checked below is self-contained and real regardless, and does not become weaker once the
-      # cross-repo comparison lands beside it.
+      # This is NOT made redundant by the cross-repository check above, and the two are not the same
+      # claim. That one proves these files agree with the product; this one proves what they SAY —
+      # LICENSE against the canonical Apache-2.0 text at apache.org, NOTICE against the withholding it
+      # has to contain. Agreement with the product cannot establish either, because two repositories
+      # can agree on the wrong licence. Neither check subsumes the other, and LICENSE is deliberately
+      # left out of the cross-repository list for exactly this reason: an external canonical is a
+      # stronger pin than a sibling's copy.
       - name: the licence, NOTICE and third-party notices really travel with this bundle
         run: |
           node - <<'JS'
