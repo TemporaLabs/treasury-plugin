@@ -13,8 +13,12 @@ All notable changes to the Agent Treasury plugin are recorded here. The format f
   `THIRD_PARTY_NOTICES.md`. The ref must be a release tag or a full commit SHA — a branch name is
   refused, since a comparison against something that moves proves nothing the next day — and a fetch
   that fails is a failure rather than a skip, because a check that passes when it cannot read the
-  other side agrees with everything. `LICENSE` is deliberately not in that list: it is already
-  pinned to the canonical Apache-2.0 text, which is a stronger claim than agreeing with the product.
+  other side agrees with everything. A pinned commit must additionally be **reachable** from one of
+  the product's published refs: a commit orphaned by a history rewrite is still served on request,
+  so it fetches and compares clean while naming something no branch or tag can reach, and retrieval
+  therefore had to be checked separately from provenance. `LICENSE` is deliberately not in that
+  list: it is already pinned to the canonical Apache-2.0 text, which is a stronger claim than
+  agreeing with the product.
 
   What this establishes is that the carried files match the release they *claim*, which is not the
   same as the claim being current. When the product has tagged something newer, the run says so as a

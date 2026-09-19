@@ -37,9 +37,16 @@ REF=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["ref"])' "$
 # happens to hold and call any answer a pass. Only two shapes are accepted: a release tag, or a
 # full 40-character commit SHA — the mid-cycle case, where the bundle is refreshed from a product
 # commit that has not been tagged yet. A short SHA is refused because it is a prefix, not an
-# identity. If the pinned SHA is later orphaned by a history rewrite the fetch fails and this goes
-# red, which is the correct direction: a provenance claim that can no longer be retrieved is not a
-# provenance claim.
+# identity.
+#
+# 🔴 FETCHING A COMMIT IS NOT EVIDENCE THAT IT IS STILL PART OF THE PRODUCT'S HISTORY, and this
+# comment claimed the opposite until it was measured. GitHub serves any full SHA it still holds,
+# reachable or not, so a commit orphaned by a history rewrite fetches fine and compares fine — the
+# pin then names something no branch or tag can reach, which is the provenance failure this file
+# exists to prevent, passing green. Measured on a real orphan: `d7357151…`, the product's pre-rewrite
+# default-branch tip, fetched and compared clean. The earlier test used a NONEXISTENT SHA, which does
+# fail — a different target, and the reason the false claim survived. So the commit path below checks
+# REACHABILITY separately from retrieval.
 if [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   KIND=tag
 elif [[ "$REF" =~ ^[0-9a-f]{40}$ ]]; then
@@ -65,14 +72,39 @@ if [ "$KIND" = tag ]; then
     exit 1
   fi
 else
-  mkdir -p "$WORK/product"
-  git init -q "$WORK/product"
-  git -C "$WORK/product" remote add origin "$URL"
-  if ! GIT_TERMINAL_PROMPT=0 git -C "$WORK/product" fetch -q --depth 1 origin "$REF"; then
-    echo "::error::could not fetch $REPO at commit $REF — it may have been orphaned by a history rewrite."
+  P="$WORK/product"
+  git init -q "$P"
+  git -C "$P" remote add origin "$URL"
+  # `--filter=blob:none` fetches the whole commit graph without the file contents, which is what
+  # makes an ancestry question answerable at all: `--depth 1` would give a history one commit deep,
+  # where `merge-base --is-ancestor` cannot tell an orphan from a parent it simply has not been
+  # handed. Blobs arrive on demand at checkout below. Measured at 0.5s and 284K on this product.
+  if ! GIT_TERMINAL_PROMPT=0 git -C "$P" fetch -q --filter=blob:none origin \
+      'refs/heads/main:refs/published/main' \
+      'refs/heads/release/v*:refs/published/release/*' \
+      'refs/tags/v*:refs/published/tags/*'; then
+    echo "::error::could not read $REPO's published refs — failing rather than guessing at reachability."
     exit 1
   fi
-  git -C "$WORK/product" checkout -q FETCH_HEAD
+  if ! GIT_TERMINAL_PROMPT=0 git -C "$P" fetch -q --filter=blob:none origin "$REF"; then
+    echo "::error::could not fetch $REPO at commit $REF — no such commit."
+    echo "::error::Failing rather than skipping: a gate that passes when it cannot read the other side compares nothing and always agrees."
+    exit 1
+  fi
+  # Retrieval succeeded; now the separate question. Reachable from a published ref, or orphaned?
+  REACHED=""
+  for r in $(git -C "$P" for-each-ref --format='%(refname)' refs/published); do
+    if git -C "$P" merge-base --is-ancestor "$REF" "$r" 2>/dev/null; then
+      REACHED="$REACHED ${r#refs/published/}"
+    fi
+  done
+  if [ -z "$REACHED" ]; then
+    echo "::error::$REPO holds commit $REF but no published ref reaches it — it is orphaned, most likely by a history rewrite."
+    echo "::error::It fetches and it would compare clean, which is exactly why this is checked separately: a commit nothing can reach is not provenance, it is an object the server has not collected yet."
+    exit 1
+  fi
+  echo "  reachable from:$REACHED"
+  git -C "$P" checkout -q "$REF"
 fi
 
 # The fetch succeeding does not mean the files are there. Assert presence separately, so a product
