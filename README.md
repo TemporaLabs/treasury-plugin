@@ -20,7 +20,8 @@ variable, capital is at risk, and a withdrawal depends on the liquidity availabl
   still carries the bundle on purpose: the carried file installs nothing, while resolving the package
   by name would pull the library's runtime dependencies — on the order of a hundred packages the MCP
   server never loads. The release tag pins the version. Byte-identity between this bundle and the
-  product's release is the invariant; the cross-repository check for it is tracked in #7.
+  product's release is the invariant, and CI enforces it: `bundle-source.json` names the product ref
+  these files came from, and every run fetches the product at that ref and compares them byte for byte.
 
 ## What it never contains
 
