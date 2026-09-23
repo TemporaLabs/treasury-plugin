@@ -9,11 +9,11 @@ All notable changes to the Agent Treasury plugin are recorded here. The format f
 - `@temporalabs/treasury` v0.1.0 is published to npm (2026-09-18), so the v0.1.0 note below no
   longer describes the registry. What it describes about this repository still holds, and now on
   purpose rather than as an interim: the plugin keeps carrying `dist/mcp-server.mjs` instead of
-  resolving the package by name. The carried bundle installs nothing; the package declares the
-  library's runtime dependencies, which resolve to on the order of a hundred packages the MCP
-  server never loads because they are already inlined. Pinning is done by the release tag, which is
-  immutable. The invariant is byte-identity between the carried bundle and the product's release;
-  the cross-repository check for it is tracked in #7.
+  resolving the package by name, and the `npx` pin that note announces is withdrawn. The carried
+  bundle installs nothing; the package declares the library's runtime dependencies, which resolve to
+  on the order of a hundred packages the MCP server never loads because they are already inlined.
+  Pinning is done by the release tag, which is immutable. The invariant is byte-identity between the
+  carried bundle and the product's release; the cross-repository check for it is tracked in #7.
 
 ## [v0.1.0] - 2026-09-18
 
