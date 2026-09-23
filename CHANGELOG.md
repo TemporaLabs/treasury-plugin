@@ -3,6 +3,21 @@
 All notable changes to the Agent Treasury plugin are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+## [0.2.0] - Unreleased
+
+### Added
+- `skills/earn/SKILL.md`: a new "One-click deposit through a connected wallet" primary flow —
+  check the companion `connect` plugin for a wallet, always the configured default vault, one
+  wallet confirmation per call via `connect_send_transaction`, then `earn_balance` to confirm. The
+  existing prepare-only walkthrough is kept, relabeled "Advanced: preparing calls for your own
+  signer (no Connect)" — nothing removed, still needed for a headless signer/CI/cast use case.
+
+### Note
+Version bumped from 0.1.0 specifically so this branch's build occupies a DIFFERENT plugin-cache
+slot than the pinned `release/v0.1.0` GitHub release — installing this branch locally for testing
+must not silently overwrite the cached content anyone else on the same machine gets from the real
+release under the same `treasury@treasury` id.
+
 ## [0.1.0] - 2026-09-18
 
 Carries `@temporalabs/treasury` 0.1.0.
