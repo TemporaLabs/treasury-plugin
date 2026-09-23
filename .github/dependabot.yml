@@ -1,9 +1,15 @@
 # No npm entry, and adding one would watch nothing. package.json declares no
 # dependencies, but that is true of the manifest rather than of what ships:
 # dist/mcp-server.mjs embeds viem, zod and the MCP SDK, inlined at build time in
-# the product repo, and Dependabot cannot see inside a committed bundle. The
-# planned move to an exact-version npx pin (TemporaLabs/treasury-plugin#7) does
-# not change that either — an npx argument is not a manifest.
+# the product repo, and Dependabot cannot see inside a committed bundle.
+#
+# Carrying the bundle is the settled arrangement, not an interim one. Resolving
+# the package by name through an npx pin was considered and withdrawn: it would
+# have pulled the library's runtime dependencies — on the order of a hundred
+# packages the server never loads, because they are already inlined — in
+# exchange for version pinning the release tag already provides. It would not
+# have given Dependabot anything to watch either; an npx argument is not a
+# manifest.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
