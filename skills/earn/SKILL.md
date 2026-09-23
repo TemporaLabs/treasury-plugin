@@ -13,7 +13,11 @@ not permission to deposit it. The
 calls**. Every prepared call comes back inside `{ requires_signature: true, status: "unsigned", calls }`
 — that envelope is the tool telling you nothing has been submitted and no money has moved. It cannot sign or send, and neither can you through it — the operator's own signer
 (a wallet, a policy-engine signer, a token-bound account) does that. That boundary is the
-whole design: a skill that supplies judgement must never hold the gate that supplies money.
+whole design: a skill that supplies judgement must never hold the gate that supplies money. When
+the operator has a wallet connected through the companion **connect** plugin, the fastest path from
+"earn with N USDC" to a submitted transaction is the **One-click deposit** flow below — it still
+never signs or sends anything itself; it hands each prepared call to `connect_send_transaction`,
+and the connected wallet's own approval is what actually authorizes it.
 
 ## Setup
 
@@ -63,7 +67,85 @@ The address argument is **`account`** on every tool that takes one — whose sha
 the shares that burn, `receiver` is where the USDC lands. They are usually the same address and
 the tool will not assume it. Confirm the payee with the operator before you build.
 
-## Opening an account and depositing
+## One-click deposit through a connected wallet
+
+This is the primary flow for "earn with N USDC": the operator states an amount, approves exactly
+one wallet prompt per call, and gets a result — no vault picker, no manual call-by-call hand-off.
+
+1. **Get an account.** Run `connect_status` (from the companion **connect** plugin). If it isn't
+   `connected`, run `connect_wallet`, show the operator the `uri`/`qr` it returns, and poll
+   `connect_status` until it resolves. Do not proceed on a guessed or remembered address — read the
+   `account` from `connected` state.
+2. **Validate the amount before anything else.** It must be a positive, plain decimal USDC figure.
+   An amount that fails this — zero, negative, unparseable, more than six decimal places — is
+   reported immediately (`Unable to deposit …: the amount must be a positive number of USDC.`); do
+   not call any tool with it.
+3. **Always use the configured default vault — never ask the operator to choose one.** Read it from
+   `earn_vaults` → `default` each time; do not hardcode a vault name, slug, or address anywhere in
+   how you talk about this flow, because which vault is the default is an operator-side configuration
+   choice, not a fact about this skill. If `defaultAccess` is `"whitelist"`, run `earn_status` for
+   the account first — see step 1 of the advanced flow below for what a `WHITELIST_GATED` result
+   means and how to report it. If the default vault's `depositOpen.open` is `false`, stop and report
+   plainly that the default vault is not currently accepting deposits — do not fall back to a
+   different vault.
+4. **On a first deposit, present `earn_terms` and get an explicit acknowledgement** — same
+   requirement as the advanced flow; a connected wallet does not waive it.
+5. **`earn_quote` with `direction: "deposit"`, the real `account` and amount, then read the
+   preflight verdict** exactly as in step 4 of the advanced flow below (`NEEDS_APPROVAL` /
+   `OPEN_READY` → proceed; `WHITELIST_GATED` / `REVERTED_OTHER` / `REFUSED_BY_CLIENT` /
+   `UNRESOLVED` → stop and report, do not guess a workaround). A `REVERTED_OTHER` finding that
+   names an insufficient balance is how "your wallet does not have enough USDC" gets detected —
+   read the `findings` and report the plain-language reason, not the raw revert.
+6. **`earn_prepare_deposit`**, then hand each call in `calls`, **in order**, to
+   `connect_send_transaction` — `to` and `data` exactly as the envelope carries them, and `value`
+   only if the call has one. Before the first one, run the destination check from "Handing calls to
+   the signer" below using the connected wallet's own address as the receiver (it already is the
+   confirmed account from step 1, so this is usually a formality, not a new question to the
+   operator) and read the call's `gasAdvice`.
+7. **Each `connect_send_transaction` result is one of two shapes, and they get reported differently:**
+   - `{status: "submitted", hash}` — the wallet signed and broadcast it. Report:
+     ```
+     Deposit submitted: <amount> USDC to <vault displayName>
+     Transaction: <hash>
+     Status: pending
+     ```
+     Move to the next call in the envelope (if any) only after this one reports `submitted`, and
+     re-check `precondition` (the deposit call's allowance requirement) the same way the advanced
+     flow does — a wallet's own RPC is not guaranteed to be the one that will simulate the next step.
+   - `{status: "rejected", reason}` — the wallet declined, or nothing happened within its timeout.
+     Report plainly (`Unable to deposit <amount> USDC: you rejected the signature request in your
+     wallet.` for an explicit decline; `Unable to deposit <amount> USDC: the wallet did not respond
+     in time — try again.` for a timeout) and stop. Do not retry a rejected `approve` automatically;
+     ask whether to try again. An `approve` that already reported `submitted` should not be re-sent
+     just because the following `deposit` was rejected — only the rejected step needs retrying.
+8. **After every call reports `submitted`, confirm with `earn_balance`** and report the resulting
+   value — `submitted` is not `confirmed`; this step is what actually checks the chain. If
+   `earn_balance` cannot yet see the deposit (a fresh transaction the event scan hasn't covered),
+   say so rather than asserting a value you have not observed:
+   ```
+   Deposit submitted: <amount> USDC to <vault displayName>
+   Transaction: <hash>
+   Status: confirmed — <value> now in the vault
+   ```
+
+### Errors this flow must handle plainly, not silently
+
+| situation | what to do |
+|---|---|
+| no wallet connected | route through `connect_wallet` (step 1) before anything else |
+| invalid amount | reject before calling any tool (step 2); name the actual problem |
+| insufficient USDC balance | surfaces as `REVERTED_OTHER` in the quote's preflight (step 5); report the plain reason |
+| insufficient gas | surfaces as a wallet-side rejection from `connect_send_transaction` (many wallets refuse the prompt before it reaches you) — report it as a rejection, not a mysterious failure |
+| user rejects the signature | `connect_send_transaction` returns `{status: "rejected"}` — report and stop, do not retry silently |
+| default vault unavailable or paused | `depositOpen.open` is `false` (step 3) — report and stop; do not substitute another vault |
+| submission failure | `connect_send_transaction` throws (e.g. no wallet connected after all, or the relay itself failed) — report the message verbatim |
+| pending / confirmed / failed on-chain | `submitted` is pending by definition; `earn_balance` (step 8) is what confirms; a reverted transaction is a failure to report, not a value to compute around |
+
+## Advanced: preparing calls for your own signer (no Connect)
+
+Use this path when there is no connected wallet — a headless signer, a CI job, an operator running
+`cast send` themselves. The one-click flow above is the same tools in a different order; nothing
+here is deprecated by it.
 
 1. **If the operator names no vault, use the default** (`earn_vaults` → `default`; today Tempora
    Labs Cash Plus USDC (Test 2) on Base, open to any account). Every listed vault is a Tempora vault.
@@ -225,15 +307,21 @@ After each send, take the transaction hash they paste back and continue with `ea
 Sending from a script, for a key held on a host the operator runs, is the same thing: the ordering,
 gas buffer and nonce rules above are identical.
 
-**If the operator asks you to sign or send anyway,** the answer is that the calls are built and
-waiting for their signer, what each one does, and the block above. Not "I can't"; "here is how
-you do it, and here is why the key stays with you."
+**If the operator asks you to sign or send anyway, first check whether a wallet is connected**
+(`connect_status`, from the companion connect plugin). If it is, that IS the supported path — use
+the one-click flow above (`connect_send_transaction`), which asks the connected wallet to sign and
+broadcast; that is not "doing it yourself", the wallet still holds the key and still decides. Only
+when there is no connected wallet does the answer become the hand-off above: the calls are built and
+waiting for their signer, what each one does, and the block above. Not "I can't"; either "here's the
+one-click flow" or "here is how you do it yourself, and why the key stays with you."
 
 ## What this skill will not do
 
-- **Hold a key, sign, or send.** If the operator asks you to "just do it", answer with the
-  hand-off above: the calls are built, what each one does, and the terminal commands to send them.
-  The two that bite: send the `approve` and the `deposit` as separate transactions in that order,
+- **Hold a key, or sign or send by itself.** This server has no sign/send tool, and never will.
+  The one-click flow above still requires a real wallet's real approval for every call — nothing is
+  submitted on the operator's word alone. Without a connected wallet, answer a "just do it" request
+  with the hand-off above: the calls are built, what each one does, and the terminal commands to send
+  them. The two that bite: send the `approve` and the `deposit` as separate transactions in that order,
   checking the deposit's own `precondition` in between rather than assuming the approve has
   propagated; and never reuse a nonce across the pair. `docs/runbooks/sign_and_send.md` in the
   Agent Treasury repository covers the rest.
