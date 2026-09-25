@@ -3,7 +3,7 @@
 All notable changes to the Agent Treasury plugin are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [v0.1.1] - 2026-09-25
 
 ### Added
 - CI now checks that what this repository carries from the product is byte-identical to the
@@ -34,8 +34,9 @@ All notable changes to the Agent Treasury plugin are recorded here. The format f
   bundle installs nothing; the package declares the library's runtime dependencies, which resolve to
   on the order of a hundred packages the MCP server never loads because they are already inlined.
   Pinning is done by the release tag, which is immutable. The invariant is byte-identity between the
-  carried bundle and the product's release, and it is now enforced in CI rather than asserted — the
-  cross-repository check for it is tracked in #7.
+  carried bundle and the product's release, and it is now enforced in CI rather than asserted (#7).
+  This release carries `TemporaLabs/treasury` `v0.1.0` — its only tagged release at this time; the
+  byte-identity check above is what will catch drift once a newer one exists.
 
 ## [v0.1.0] - 2026-09-18
 
