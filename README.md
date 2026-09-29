@@ -1,5 +1,23 @@
 # Agent Treasury
 
+> **This repository has moved.** From v0.1.1 the Claude Code plugin ships from
+> [TemporaLabs/treasury](https://github.com/TemporaLabs/treasury), in its
+> [`plugin/`](https://github.com/TemporaLabs/treasury/tree/v0.1.1/plugin) folder, and this repository is
+> retired and is being archived (it stays public and read-only). To install the current release:
+>
+> ```sh
+> claude plugin marketplace remove treasury   # only if you added the marketplace from this repository
+> claude plugin marketplace add TemporaLabs/treasury@v0.1.1
+> claude plugin install treasury@treasury
+> ```
+>
+> The install id is unchanged (`treasury@treasury`), but the new marketplace has the same name as the
+> old one, so the old one must be removed first, and removing it also uninstalls the plugin
+> ([details](https://github.com/TemporaLabs/treasury/blob/v0.1.1/docs/install.md#upgrading-an-earlier-install)).
+> v0.1.0, tagged here, keeps installing from this repository; **the rest of this file describes that
+> release.** Installs that track this repository's default branch do not receive updates: switch to the
+> lines above.
+
 **Treasury management plugin for AI agents.** By Tempora Labs.
 
 The Claude Code / Codex plugin for [Agent Treasury](https://github.com/TemporaLabs/treasury). The
